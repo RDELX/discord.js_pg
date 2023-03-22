@@ -25,8 +25,8 @@ client.on('messageCreate', async (message) => {
         console.log(`${message.author.tag} in #${message.channel.name} sent: ${message.content}`);
         // Save the log to the PostgreSQL database
         const query = {
-            text: 'INSERT INTO message_logs(server_id, server_name, channel_name, username, user_id, channel_id, message_content) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-            values: [message.guild.id, message.guild.name, message.channel.name, message.author.username, message.author.id, message.channel.id, message.content],
+            text: 'INSERT INTO message_logs(server_id, server_name, channel_name, username, user_id, channel_id, message_content, message_link, embed_link) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
+            values: [message.guild.id, message.guild.name, message.channel.name, message.author.username, message.author.id, message.channel.id, message.content, message.url,  message.attachments.size > 0 ? message.attachments.first().url : null],
         };
         try {
             const res = await pool.query(query);
@@ -36,7 +36,6 @@ client.on('messageCreate', async (message) => {
         }
     }
 });
-    ;
 
 // Log in to the Discord client
     client.login(process.env.DISCORD_TOKEN);
