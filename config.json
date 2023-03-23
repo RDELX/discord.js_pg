@@ -1,0 +1,14 @@
+{
+  "discordToken": "TOKEN",
+  "database": {
+    "user": "DATABASE_USER",
+    "host": "DATABASE_HOST",
+    "database": "DATABASE_NAME",
+    "password": "DATABASE_PASSWORD",
+    "port": DATABASE_PORT
+  },
+  "serverIds": [
+    "",
+    ""
+  ]
+}

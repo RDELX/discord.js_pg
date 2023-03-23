@@ -11,6 +11,8 @@
   "dependencies": {
     "discord.js-selfbot-v13": "^2.12.1",
     "dotenv": "^16.0.3",
-    "pg": "^8.10.0"
+    "pg": "^8.10.0",
+    "pg-format": "^1.0.4",
+    "winston": "^3.8.2"
   }
 }

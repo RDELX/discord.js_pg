@@ -1,41 +1,60 @@
-const {Client} = require('discord.js-selfbot-v13');
-const {Pool} = require('pg'); // Import the pg library
-require('dotenv').config()
-const client = new Client();
-const token = 'YOUR TOKEN HERE'
-const serverIds = ['']; // Replace with the IDs of the servers you want to log messages from
+const { Client, Intents } = require('discord.js-selfbot-v13');
+const { createLogger, format, transports } = require('winston');
+const { combine, timestamp, printf } = format;
+const pg = require('pg');
+const pgFormat = require('pg-format');
+const { createServerTables } = require('./src/server_log_grouping');
+const config = require('./config.json');
 
-// Set up a connection to your PostgreSQL database
-const pool = new Pool({
-    user: 'YourDbUsername', // Database user name
-    host: 'YourDbAddress, Use localhost for local db', // Database host
-    database: 'DatabaseName', // Database name
-    password: 'DatabasePassword', // Database password
-    port: 'Your database port, default is 5432',
+// Initialize PostgreSQL database connection pool
+const pool = new pg.Pool(config.database);
+
+// Create a logger with Winston
+const logger = createLogger({
+    format: combine(
+        timestamp(),
+        printf(({ level, message, timestamp }) => {
+            return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+        })
+    ),
+    transports: [
+        new transports.Console(),
+        new transports.File({ filename: 'logs/server.log' })
+    ]
 });
 
-// When the client is ready, log a message to the console
-client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag}`);
+// Create a new Discord client
+const client = new Client({
+    intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES]
 });
 
-// Listen for messages and log them to the database
-client.on('messageCreate', async (message) => {
-    if (serverIds.includes(message.guild?.id)) {
-        console.log(`${message.author.tag} in #${message.channel.name} sent: ${message.content}`);
-        // Save the log to the PostgreSQL database
-        const query = {
-            text: 'INSERT INTO message_logs(server_id, server_name, channel_name, username, user_id, channel_id, message_content, message_link, embed_link) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
-            values: [message.guild.id, message.guild.name, message.channel.name, message.author.username, message.author.id, message.channel.id, message.content, message.url,  message.attachments.size > 0 ? message.attachments.first().url : null],
-        };
+// When the client is ready, log a message and set the status
+client.once('ready', () => {
+    console.log('Logged in as', client.user.tag);
+    client.user.setActivity('logging server messages');
+});
+
+// Listen for new messages and log them to the database
+client.on('messageCreate', async message => {
+    // Only log messages from specified servers
+    if (message.guild && config.serverIds.includes(message.guild.id)) {
         try {
-            const res = await pool.query(query);
-            console.log(`Log saved to database with ID ${res.rows[0].id}`);
+            // Insert the log into the database
+            const serverName = message.guild.name.replace(/\W+/g, '_').toLowerCase();
+            await createServerTables(pool, serverName); // check if table exists, if not create it
+            const query = pgFormat(
+                'INSERT INTO %I (server_name, server_id, channel_name, username, user_id, channel_id, message_content, message_link, embed_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+                serverName.replace(/\W+/g, '_').toLowerCase()
+            );
+            const values = [message.guild.name, message.guild.id, message.channel.name, message.author.username, message.author.id, message.channel.id, message.content, message.url, message.attachments.size > 0 ? message.attachments.first().url : null];
+            await pool.query(query, values);
+
+            logger.info(`[${message.guild.name}][${message.channel.name}] ${message.author.username}: ${message.content}`);
         } catch (err) {
-            console.error('Log failed to save to database', err);
+            console.error('Error inserting log into database:', err);
         }
     }
 });
 
-// Log in to the Discord client
-    client.login(process.env.DISCORD_TOKEN);
+// Log in to Discord with your client's token
+client.login(config.discordToken);
