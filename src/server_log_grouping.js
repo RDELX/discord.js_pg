@@ -12,7 +12,7 @@ async function createServerTables(pool, serverName) {
         if (!rows[0].exists) {
             // Create the server table if it doesn't exist
             const createQuery = pgFormat(
-                'CREATE TABLE IF NOT EXISTS %I (id SERIAL PRIMARY KEY, server_name TEXT NOT NULL, server_id TEXT NOT NULL, channel_name TEXT NOT NULL, username TEXT NOT NULL, user_id TEXT NOT NULL, channel_id TEXT NOT NULL, message_content TEXT NOT NULL, message_link TEXT NOT NULL, embed_link TEXT, created_at TIMESTAMP NOT NULL DEFAULT NOW())',
+                'CREATE TABLE IF NOT EXISTS %I (id SERIAL PRIMARY KEY, server_name TEXT NOT NULL, server_id TEXT NOT NULL, channel_name TEXT NOT NULL, username TEXT NOT NULL, user_id TEXT NOT NULL, channel_id TEXT NOT NULL, message_content TEXT NOT NULL, message_link TEXT NOT NULL, message_id TEXT NOT NULL, embed_link TEXT, message_deleted BOOLEAN DEFAULT false, created_at TIMESTAMP NOT NULL DEFAULT NOW())',
                 serverName.replace(/\W+/g, '_').toLowerCase()
             );
             await pool.query(createQuery);
@@ -24,5 +24,6 @@ async function createServerTables(pool, serverName) {
     }
 }
 
-
 module.exports = { createServerTables };
+
+
