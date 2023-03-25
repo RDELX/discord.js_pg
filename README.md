@@ -4,7 +4,7 @@ Discord chat logger with PostgreSQL
 
 ## Installation
 
-* Clone the repo and edit the index.js file 
+* Clone the repo and edit the config.json file 
 
 
 
