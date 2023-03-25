@@ -4,6 +4,7 @@ const {combine, timestamp, printf} = format;
 const pg = require('pg');
 const pgFormat = require('pg-format');
 const {createServerTables} = require('./src/server_log_grouping');
+const { saveEmbedLink } = require('./src/save_embed_link');
 const config = require('./config.json');
 
 // Initialize PostgreSQL database connection pool
@@ -70,26 +71,33 @@ client.on('messageCreate', async (message) => {
 });
 
 client.on('messageDelete', async (message) => {
-    // Only update messages from specified servers
-    if (message.guild && config.serverIds.includes(message.guild.id)) {
-        try {
-            // Update the log in the database
-            const serverName = message.guild.name.replace(/\W+/g, '_').toLowerCase();
-            const query = pgFormat(
-                'UPDATE %I SET message_deleted = true WHERE message_id = $1',
-                serverName.replace(/\W+/g, '_').toLowerCase()
-            );
-            const values = [message.id];
-            await pool.query(query, values);
+  // Only update messages from specified servers
+  if (message.guild && config.serverIds.includes(message.guild.id)) {
+    try {
+      // Update the log in the database
+      const serverName = message.guild.name.replace(/\W+/g, '_').toLowerCase();
+      const query = pgFormat(
+        'UPDATE %I SET message_deleted = true WHERE message_id = $1',
+        serverName.replace(/\W+/g, '_').toLowerCase()
+      );
+      const values = [message.id];
+      await pool.query(query, values);
 
-            logger.info(
-                `[${message.guild.name}][${message.channel.name}] ${message.author.username}'s message has been deleted: ${message.content}`
-            );
-        } catch (err) {
-            console.error('Error updating log in database:', err);
-        }
+      // Save the embed link if there is one
+      if (message.attachments.size > 0) {
+        const embedLink = message.attachments.first().url;
+        await saveEmbedLink(message.id, embedLink);
+      }
+
+      logger.info(
+        `[${message.guild.name}][${message.channel.name}] ${message.author.username}'s message has been deleted: ${message.content}`
+      );
+    } catch (err) {
+      console.error('Error updating log in database:', err);
     }
+  }
 });
+
 
 // Log in to Discord with your client's token
 client.login(config.discordToken);
