@@ -25,5 +25,3 @@ async function createServerTables(pool, serverName) {
 }
 
 module.exports = { createServerTables };
-
-
